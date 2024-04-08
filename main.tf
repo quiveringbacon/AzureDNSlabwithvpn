@@ -5,7 +5,7 @@ provider "azurerm" {
 
 #variables
 variable "A-location" {
-    description = "Location of the resources, example: eastus2"
+    description = "Location of the resources"
     #default     = "eastus"
 }
 
@@ -31,7 +31,7 @@ resource "azurerm_resource_group" "RG" {
   location = var.A-location
   name     = var.B-resource_group_name
   provisioner "local-exec" {
-    command = "az vm image terms accept --urn cisco:cisco-csr-1000v:17_3_4a-byol:latest"
+    command = "az vm image terms accept --urn cisco:cisco-asav:asav-azure-byol:latest"
   }
 }
 
@@ -181,34 +181,7 @@ TEMPLATE
 }
 
 #vnets and subnets
-/*
-resource "azurerm_virtual_network" "hub-vnet" {
-  address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.RG.location
-  name                = "AZ-hub-vnet"
-  resource_group_name = azurerm_resource_group.RG.name
-  subnet {
-    address_prefix     = "10.0.0.0/24"
-    name                 = "default"
-    security_group = azurerm_network_security_group.hubvnetNSG.id
-  }
-  subnet {
-    address_prefix     = "10.0.1.0/24"
-    name                 = "GatewaySubnet" 
-  }
-  subnet {
-    address_prefix     = "10.0.2.0/24"
-    name                 = "InboundDNSresolverSubnet"
-    #security_group = azurerm_network_security_group.hubvnetNSG.id 
-  }
-  timeouts {
-    create = "2h"
-    read = "2h"
-    update = "2h"
-    delete = "2h"
-  }
-}
-*/
+
 resource "azurerm_virtual_network" "hub-vnet" {
   address_space       = ["10.0.0.0/16"]
   location            = azurerm_resource_group.RG.location
@@ -323,12 +296,12 @@ resource "azurerm_virtual_network" "onprem-vnet" {
   subnet {
     address_prefix     = "192.168.2.0/24"
     name                 = "outside"
-    security_group =  azurerm_network_security_group.csrsshnsg.id
+    security_group =  azurerm_network_security_group.asasshnsg.id
   }
   subnet {
     address_prefix     = "192.168.3.0/24"
     name                 = "inside" 
-    security_group = azurerm_network_security_group.csrnsg.id
+    security_group = azurerm_network_security_group.asansg.id
   }
   timeouts {
     create = "2h"
@@ -388,7 +361,7 @@ resource "azurerm_route_table" "RT" {
   disable_bgp_route_propagation = false
 
   route {
-    name           = "tocsr"
+    name           = "toasa"
     address_prefix = "10.0.0.0/8"
     next_hop_type  = "VirtualAppliance"
     next_hop_in_ip_address = "192.168.3.4"
@@ -543,9 +516,9 @@ resource "azurerm_network_security_rule" "onpremvnetnsgrule2" {
   
 }
 
-resource "azurerm_network_security_group" "csrnsg" {
+resource "azurerm_network_security_group" "asansg" {
   location            = azurerm_resource_group.RG.location
-  name                = "onprem-csr-default-nsg"
+  name                = "onprem-asa-default-nsg"
   resource_group_name = azurerm_resource_group.RG.name
   timeouts {
     create = "2h"
@@ -555,16 +528,16 @@ resource "azurerm_network_security_group" "csrnsg" {
   }
   
 }
-resource "azurerm_network_security_rule" "csrnsgrule1" {
+resource "azurerm_network_security_rule" "asansgrule1" {
   access                      = "Allow"
   destination_address_prefix  = "*"
   destination_port_range      = "*"
   direction                   = "Inbound"
   name                        = "AllowCidrBlockInbound"
-  network_security_group_name = "onprem-csr-default-nsg"
+  network_security_group_name = "onprem-asa-default-nsg"
   priority                    = 2711
   protocol                    = "*"
-  resource_group_name         = azurerm_network_security_group.csrnsg.resource_group_name
+  resource_group_name         = azurerm_network_security_group.asansg.resource_group_name
   source_address_prefix       = "192.168.0.0/24"
   source_port_range           = "*"
   timeouts {
@@ -575,16 +548,16 @@ resource "azurerm_network_security_rule" "csrnsgrule1" {
   }
   
 }
-resource "azurerm_network_security_rule" "csrnsgrule2" {
+resource "azurerm_network_security_rule" "asansgrule2" {
   access                      = "Allow"
   destination_address_prefix  = "*"
   destination_port_range      = "*"
   direction                   = "Outbound"
   name                        = "AllowCidrBlockOutbound"
-  network_security_group_name = "onprem-csr-default-nsg"
+  network_security_group_name = "onprem-asa-default-nsg"
   priority                    = 2712
   protocol                    = "*"
-  resource_group_name         = azurerm_network_security_group.csrnsg.resource_group_name
+  resource_group_name         = azurerm_network_security_group.asansg.resource_group_name
   source_address_prefix       = "10.0.0.0/8"
   source_port_range           = "*"
   timeouts {
@@ -596,7 +569,7 @@ resource "azurerm_network_security_rule" "csrnsgrule2" {
   
 }
 
-resource "azurerm_network_security_group" "csrsshnsg" {
+resource "azurerm_network_security_group" "asasshnsg" {
   location            = azurerm_resource_group.RG.location
   name                = "onprem-ssh-default-nsg"
   resource_group_name = azurerm_resource_group.RG.name
@@ -608,7 +581,7 @@ resource "azurerm_network_security_group" "csrsshnsg" {
   }
   
 }
-resource "azurerm_network_security_rule" "csrsshnsgrule1" {
+resource "azurerm_network_security_rule" "asasshnsgrule1" {
   access                      = "Allow"
   destination_address_prefix  = "*"
   destination_port_range      = "22"
@@ -645,8 +618,8 @@ resource "azurerm_public_ip" "azurevpngw-pip" {
   }
   
 }
-resource "azurerm_public_ip" "onpremcsr-pip" {
-  name                = "onpremcsr-pip"
+resource "azurerm_public_ip" "onpremasa-pip" {
+  name                = "onpremasa-pip"
   location            = azurerm_resource_group.RG.location
   resource_group_name = azurerm_resource_group.RG.name
   allocation_method = "Static"
@@ -726,7 +699,7 @@ resource "azurerm_virtual_network_gateway" "azurevpngw" {
 #Local Network Gateways
 resource "azurerm_local_network_gateway" "onpremlng" {
   address_space       = ["192.168.0.0/16"]
-  gateway_address     = azurerm_public_ip.onpremcsr-pip.ip_address
+  gateway_address     = azurerm_public_ip.onpremasa-pip.ip_address
   location            = azurerm_resource_group.RG.location
   name                = "onpremlng"
   resource_group_name = azurerm_resource_group.RG.name
@@ -813,10 +786,10 @@ resource "azurerm_network_interface" "onpremvm-nic" {
   }
   
 }
-resource "azurerm_network_interface" "csrinside-nic" {
+resource "azurerm_network_interface" "asainside-nic" {
   enable_ip_forwarding = true
   location            = azurerm_resource_group.RG.location
-  name                = "csrinside-nic"
+  name                = "asainside-nic"
   resource_group_name = azurerm_resource_group.RG.name
   ip_configuration {
     name                          = "ipconfig1"
@@ -831,15 +804,15 @@ resource "azurerm_network_interface" "csrinside-nic" {
   }
   
 }
-resource "azurerm_network_interface" "csroutside-nic" {
+resource "azurerm_network_interface" "asaoutside-nic" {
   enable_ip_forwarding = true
   location            = azurerm_resource_group.RG.location
-  name                = "csroutside-nic"
+  name                = "asaoutside-nic"
   resource_group_name = azurerm_resource_group.RG.name
   ip_configuration {
     name                          = "ipconfig1"
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.onpremcsr-pip.id
+    public_ip_address_id          = azurerm_public_ip.onpremasa-pip.id
     subnet_id                     = azurerm_virtual_network.onprem-vnet.subnet.*.id[2]
   }
   timeouts {
@@ -1000,13 +973,13 @@ resource "azurerm_virtual_machine_extension" "killonpremvmfirewall" {
   
 }
 
-resource "azurerm_linux_virtual_machine" "csr1000v" {
+resource "azurerm_linux_virtual_machine" "asav" {
   admin_password                  = var.E-password
   admin_username                  = var.D-username
   disable_password_authentication = false
   location                        = azurerm_resource_group.RG.location
-  name                            = "CSR"
-  network_interface_ids           = [azurerm_network_interface.csroutside-nic.id,azurerm_network_interface.csrinside-nic.id]
+  name                            = "asa"
+  network_interface_ids           = [azurerm_network_interface.asaoutside-nic.id,azurerm_network_interface.asainside-nic.id]
   resource_group_name             = azurerm_resource_group.RG.name
   size                            = "Standard_D2_v2"
   os_disk {
@@ -1014,71 +987,63 @@ resource "azurerm_linux_virtual_machine" "csr1000v" {
     storage_account_type = "Standard_LRS"
   }
   plan {
-    name      = "17_3_4a-byol"
-    product   = "cisco-csr-1000v"
+    name      = "asav-azure-byol"
+    product   = "cisco-asav"
     publisher = "cisco"
   }
   source_image_reference {
-    offer     = "cisco-csr-1000v"
+    offer     = "cisco-asav"
     publisher = "cisco"
-    sku       = "17_3_4a-byol"
+    sku       = "asav-azure-byol"
     version   = "latest"
   }
-  custom_data = base64encode(local.csr_custom_data)
+  custom_data = base64encode(local.asa_custom_data)
 }
 
 # Locals Block for custom data
 locals {
-csr_custom_data = <<CUSTOM_DATA
-ip route 192.168.0.0 255.255.255.0 192.168.3.1
+asa_custom_data = <<CUSTOM_DATA
+int gi0/0
+no shut
+nameif inside
+ip address dhcp
 
-crypto ikev2 proposal to-onprem-proposal
-  encryption aes-cbc-256
-  integrity  sha1
-  group      2
-  exit
+route inside 192.168.0.0 255.255.0.0 192.168.3.1
 
-crypto ikev2 policy to-onprem-policy
-  proposal to-onprem-proposal
-  match address local 192.168.2.4
-  exit
-  
-crypto ikev2 keyring to-onprem-keyring
-  peer ${azurerm_public_ip.azurevpngw-pip.ip_address}
-    address ${azurerm_public_ip.azurevpngw-pip.ip_address}
-    pre-shared-key vpn123
-    exit
-  exit
+crypto ikev2 enable management
 
-crypto ikev2 profile to-onprem-profile
-  match address  local 192.168.2.4
-  match identity remote address ${azurerm_public_ip.azurevpngw-pip.ip_address} 255.255.255.255
-  authentication remote pre-share
-  authentication local  pre-share
-  lifetime       3600
-  dpd 10 5 on-demand
-  keyring local  to-onprem-keyring
-  exit
+crypto ikev2 policy 50
+ encryption aes-256
+ integrity sha
+ group 2
+ prf sha
+ lifetime seconds 86400
 
-crypto ipsec transform-set to-onprem-TransformSet esp-gcm 256 
-  mode tunnel
-  exit
+crypto ipsec ikev2 ipsec-proposal vpn
+ protocol esp encryption aes-256
+ protocol esp integrity sha-1
+crypto ipsec profile vpn-profile
+ set ikev2 ipsec-proposal vpn
 
-crypto ipsec profile to-onprem-IPsecProfile
-  set transform-set  to-onprem-TransformSet
-  set ikev2-profile  to-onprem-profile
-  set security-association lifetime seconds 3600
-  exit
+interface Tunnel1
+ nameif vpntunnel
+ ip address 172.16.1.1 255.255.255.252
+ tunnel source interface management
+ tunnel destination ${azurerm_public_ip.azurevpngw-pip.ip_address}
+ tunnel mode ipsec ipv4
+ tunnel protection ipsec profile vpn-profile
 
-int tunnel 1
-  ip address 172.16.1.1 255.255.255.255
-  tunnel mode ipsec ipv4
-  ip tcp adjust-mss 1350
-  tunnel source 192.168.2.4
-  tunnel destination ${azurerm_public_ip.azurevpngw-pip.ip_address}
-  tunnel protection ipsec profile to-onprem-IPsecProfile
-  exit
+group-policy vpn-tunnel internal
+group-policy vpn-tunnel attributes
+ vpn-tunnel-protocol ikev2
 
-ip route 10.0.0.0 255.0.0.0 Tunnel 1
+tunnel-group ${azurerm_public_ip.azurevpngw-pip.ip_address} type ipsec-l2l
+tunnel-group ${azurerm_public_ip.azurevpngw-pip.ip_address} general-attributes
+ default-group-policy vpn-tunnel
+tunnel-group ${azurerm_public_ip.azurevpngw-pip.ip_address} ipsec-attributes
+ ikev2 remote-authentication pre-shared-key vpn123
+ ikev2 local-authentication pre-shared-key vpn123
+
+route vpntunnel 10.0.0.0 255.0.0.0 172.16.1.2
 CUSTOM_DATA  
 }
