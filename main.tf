@@ -1,6 +1,7 @@
 provider "azurerm" {
   features {
   }
+subscription_id = var.F-SubscriptionID
 }
 
 #variables
@@ -26,6 +27,11 @@ variable "E-password" {
     description = "Password for Virtual Machines"
     sensitive = true
 }
+
+variable "F-SubscriptionID" {
+  description = "Subscription ID to use"  
+}
+
 
 resource "azurerm_resource_group" "RG" {
   location = var.A-location
@@ -795,7 +801,7 @@ resource "azurerm_network_interface" "onpremvm-nic" {
   
 }
 resource "azurerm_network_interface" "asainside-nic" {
-  enable_ip_forwarding = true
+  ip_forwarding_enabled = true
   location            = azurerm_resource_group.RG.location
   name                = "asainside-nic"
   resource_group_name = azurerm_resource_group.RG.name
@@ -813,7 +819,7 @@ resource "azurerm_network_interface" "asainside-nic" {
   
 }
 resource "azurerm_network_interface" "asaoutside-nic" {
-  enable_ip_forwarding = true
+  ip_forwarding_enabled = true
   location            = azurerm_resource_group.RG.location
   name                = "asaoutside-nic"
   resource_group_name = azurerm_resource_group.RG.name
